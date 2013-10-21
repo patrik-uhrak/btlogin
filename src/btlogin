@@ -1,0 +1,67 @@
+#! /bin/bash
+
+login="$1"
+password="$2"
+page='https://www.btopenzone.com:8443/freeToEndUserLogon'
+# android devices chceck against the following page and thus I think
+# it is a reliable way how to chceck whether or not I am still
+# connected to the internet. It can change obviously one day, but 
+# no problem to update the following.
+testpage='http://clients3.google.com/generate_204'
+declare -i responset=3 sleept=2
+
+CheckApps(){
+declare -a apps=( wget )
+declare -i status=0
+
+for item in "${apps[@]}"
+do
+	if ! which "$item" #&>/dev/null
+	then
+		echo "In order to run ${0##/*} you MUST install ${item}"
+		status=1
+	fi
+done
+
+[[ "$status" -eq 1 ]] && exit 1
+}
+
+CheckConnection(){
+declare -r regexp='^HTTP request sent, awaiting response... ([1-9][0-9]{2}) .*$'
+declare line
+
+while read line
+do
+	if [[ "$line" =~ $regexp ]]
+	then
+		if [[ "${BASH_REMATCH[1]}" -eq 204 ]]
+		then
+			return 0 && break
+		else
+			return 1 && break
+		fi
+	fi
+done< <( wget --spider "$testpage" 2>&1 )
+}
+
+Login(){
+if ! CheckConnection
+then
+	wget --post-data=password="$1" "$2" -O /dev/null &>/dev/null
+fi
+}
+
+GeneratePass(){
+:
+}
+
+CheckApps
+
+while true
+do
+	if [[ "$login" == login ]]
+	then
+		Login "$password" "$page"
+		sleep "$sleept"
+	fi
+done
